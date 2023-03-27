@@ -1,0 +1,52 @@
+// SPDX-License-Identifier: MIT
+pragma solidity >=0.7.0 <0.9.0;
+
+contract MineralPropertyMarketplace {
+    struct MineralProperty {
+        address owner;
+        string name;
+        string location;
+        uint256 mineralRights;
+        uint256 price;
+    }
+    
+    MineralProperty[] public properties;
+    mapping(uint256 => address) public propertyToOwner;
+    mapping(address => uint256) ownerPropertyCount;
+    
+    event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
+    event PropertyRegistered(uint256 indexed tokenId);
+    event PropertySold(uint256 indexed tokenId, uint256 price, address indexed from, address indexed to);
+    
+    function registerProperty(string memory _name, string memory _location, uint256 _mineralRights, uint256 _price) public {
+        MineralProperty memory newProperty = MineralProperty({
+            owner: msg.sender,
+            name: _name,
+            location: _location,
+            mineralRights: _mineralRights,
+            price: _price
+        });
+        uint256 tokenId = properties.length;
+        properties.push(newProperty);
+        propertyToOwner[tokenId] = msg.sender;
+        ownerPropertyCount[msg.sender]++;
+        emit PropertyRegistered(tokenId);
+    }
+    
+    function buyProperty(uint256 _tokenId) public payable {
+        MineralProperty memory property = properties[_tokenId];
+        require(msg.value == property.price, "Invalid price");
+        address payable seller = payable(property.owner);
+        seller.transfer(msg.value);
+        propertyToOwner[_tokenId] = msg.sender;
+        ownerPropertyCount[seller]--;
+        ownerPropertyCount[msg.sender]++;
+        emit Transfer(seller, msg.sender, _tokenId);
+        emit PropertySold(_tokenId, msg.value, seller, msg.sender);
+    }
+    
+    function getProperty(uint256 _tokenId) public view returns (address, string memory, string memory, uint256, uint256) {
+        MineralProperty memory property = properties[_tokenId];
+        return (property.owner, property.name, property.location, property.mineralRights, property.price);
+    }
+}
